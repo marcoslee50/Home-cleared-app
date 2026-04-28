@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+:root {
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
+  --font-sans:  'DM Sans', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: #F5F0E8;
+  color: #0D0F14;
+  font-family: var(--font-sans);
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Step transitions */
+.step-enter { opacity: 0; transform: translateX(24px); }
+.step-enter-active { opacity: 1; transform: translateX(0); transition: all 0.4s ease; }
+.step-exit { opacity: 1; }
+.step-exit-active { opacity: 0; transform: translateX(-24px); transition: all 0.3s ease; }
+
+/* Upload drop zone */
+.dropzone-active { border-color: #2D5A45 !important; background: rgba(45,90,69,0.06) !important; }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #E8E0D0; }
+::-webkit-scrollbar-thumb { background: #8FBF9F; border-radius: 3px; }
+
+/* Progress ring */
+.progress-ring { transform: rotate(-90deg); }
+.progress-ring__circle { transition: stroke-dashoffset 0.35s ease; }
+
+@layer utilities {
+  .font-serif { font-family: var(--font-serif); }
+  .text-gradient {
+    background: linear-gradient(135deg, #C9973A, #E8B84B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}

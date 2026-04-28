@@ -1,0 +1,97 @@
+name: CI/CD — Lifetold
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Frontend ──────────────────────────────────────────────────────
+  frontend:
+    name: Frontend — Lint + Type check + Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder_anon_key_for_ci
+          NEXT_PUBLIC_APP_URL: https://lifetold.co.uk
+          BACKEND_URL: http://localhost:8000
+
+  # ── Backend ───────────────────────────────────────────────────────
+  backend:
+    name: Backend — Lint + Import check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt ruff
+
+      - name: Lint with ruff
+        run: ruff check . --select E,W,F --ignore E501
+
+      - name: Verify app imports correctly
+        run: |
+          python -c "
+          import os
+          os.environ.setdefault('ENVIRONMENT', 'test')
+          from main import app
+          assert app.title == 'Lifetold API'
+          print('App imports OK')
+          print('Routers registered:', [r.path for r in app.routes[:8]])
+          "
+        env:
+          ENVIRONMENT: test
+
+  # ── Deploy (main branch only) ─────────────────────────────────────
+  deploy-notify:
+    name: Deploy notification
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Notify deployment
+        run: |
+          echo "All checks passed on main branch"
+          echo "Vercel will auto-deploy frontend from GitHub integration"
+          echo "Railway will auto-deploy backend from GitHub integration"
