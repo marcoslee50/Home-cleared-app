@@ -1,0 +1,14 @@
+{
+  "name": "WGP Route Planner",
+  "short_name": "WGP Planner",
+  "description": "Daily route planning for Wirral Garden & Property",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0A0F0D",
+  "theme_color": "#0A0F0D",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
