@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DayPlan, ScheduledJob } from '@/lib/claude'
+import { WeatherDay, WeatherFlags, relevantFlagsForJob } from '@/lib/weather'
 
 type PlanState = 'setup' | 'loading' | 'ready' | 'error'
 
@@ -28,12 +29,17 @@ export default function PlanPage() {
   const [plan, setPlan] = useState<DayPlan | null>(null)
   const [error, setError] = useState('')
   const [jobCount, setJobCount] = useState<number | null>(null)
+  const [weather, setWeather] = useState<{ day: WeatherDay; flags: WeatherFlags } | null>(null)
 
   useEffect(() => {
     fetch('/api/plan')
       .then(r => r.json())
       .then(d => setJobCount(d.jobs?.length ?? 0))
       .catch(() => setJobCount(null))
+    fetch('/api/weather')
+      .then(r => r.json())
+      .then(d => { if (d.ok) setWeather({ day: d.day, flags: d.flags }) })
+      .catch(() => {})
   }, [])
 
   const buildPlan = async () => {
@@ -88,6 +94,10 @@ export default function PlanPage() {
       </header>
 
       <div className="page-content">
+
+        {weather && (
+          <WeatherStrip day={weather.day} flags={weather.flags} />
+        )}
 
         {(state === 'setup' || state === 'error') && (
           <div className="space-y-4">
@@ -234,7 +244,7 @@ export default function PlanPage() {
         )}
 
         {state === 'ready' && plan && (
-          <PlanDisplay plan={plan} onReset={() => setState('setup')} />
+          <PlanDisplay plan={plan} weather={weather?.flags} onReset={() => setState('setup')} />
         )}
 
       </div>
@@ -257,7 +267,48 @@ export default function PlanPage() {
   )
 }
 
-function PlanDisplay({ plan, onReset }: { plan: DayPlan; onReset: () => void }) {
+function WeatherStrip({ day, flags }: { day: WeatherDay; flags: WeatherFlags }) {
+  return (
+    <div className="card p-4 mb-4" style={{
+      borderColor: flags.goodConditions ? 'var(--brand-green)' : 'var(--status-warn)',
+    }}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-mono uppercase tracking-widest" style={{
+          color: flags.goodConditions ? 'var(--brand-green)' : 'var(--status-warn)',
+        }}>
+          Wirral weather
+        </p>
+        <span className="text-text-muted text-xs">{new Date(day.date).toLocaleDateString('en-GB', { weekday: 'long' })}</span>
+      </div>
+      <p className="text-text-primary text-sm mt-1">{flags.summary}</p>
+      <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
+        <div>
+          <p className="text-text-muted">Spray</p>
+          <p style={{ color: flags.noSpray ? 'var(--status-warn)' : 'var(--brand-green)' }}>
+            {flags.noSpray ? 'Hold off' : 'OK'}
+          </p>
+        </div>
+        <div>
+          <p className="text-text-muted">Turfing</p>
+          <p style={{ color: flags.noTurf ? 'var(--status-warn)' : 'var(--brand-green)' }}>
+            {flags.noTurf ? 'At risk' : 'OK'}
+          </p>
+        </div>
+        <div>
+          <p className="text-text-muted">Tree work</p>
+          <p style={{ color: flags.noChainsaw ? 'var(--status-alert)' : 'var(--brand-green)' }}>
+            {flags.noChainsaw ? 'No chainsaw' : 'OK'}
+          </p>
+        </div>
+      </div>
+      {flags.poorPhotoLight && (
+        <p className="text-text-muted text-xs mt-2">Note: flat light - photos will look dull</p>
+      )}
+    </div>
+  )
+}
+
+function PlanDisplay({ plan, weather, onReset }: { plan: DayPlan; weather?: WeatherFlags; onReset: () => void }) {
   const [copied, setCopied] = useState(false)
 
   const copyBarry = () => {
@@ -307,7 +358,7 @@ function PlanDisplay({ plan, onReset }: { plan: DayPlan; onReset: () => void }) 
           <p className="text-text-muted text-xs font-mono uppercase tracking-widest">Schedule</p>
         </div>
         {plan.jobs.map((job, i) => (
-          <JobRow key={job.id} job={job} index={i} isLast={i === plan.jobs.length - 1} />
+          <JobRow key={job.id} job={job} weather={weather} index={i} isLast={i === plan.jobs.length - 1} />
         ))}
         <div className="px-4 py-3 border-t border-surface-border" style={{ background: 'var(--surface-muted)' }}>
           <div className="flex justify-between text-sm">
@@ -349,8 +400,9 @@ function PlanDisplay({ plan, onReset }: { plan: DayPlan; onReset: () => void }) 
   )
 }
 
-function JobRow({ job, index: _index, isLast }: { job: ScheduledJob; index: number; isLast: boolean }) {
+function JobRow({ job, weather, index: _index, isLast }: { job: ScheduledJob; weather?: WeatherFlags; index: number; isLast: boolean }) {
   const [expanded, setExpanded] = useState(false)
+  const weatherFlags = weather ? relevantFlagsForJob(job.jobType, weather) : []
 
   return (
     <div
@@ -368,9 +420,10 @@ function JobRow({ job, index: _index, isLast }: { job: ScheduledJob; index: numb
             <p className="font-mono text-xs text-text-secondary flex-shrink-0">{job.scheduledArrival}</p>
           </div>
           <p className="text-text-muted text-xs mt-0.5">{job.jobType} - {job.estimatedDuration} min</p>
-          {job.flags.length > 0 && (
+          {(job.flags.length > 0 || weatherFlags.length > 0) && (
             <div className="flex flex-wrap gap-1 mt-1.5">
-              {job.flags.map((f, i) => <span key={i} className="badge badge-warn text-xs">{f}</span>)}
+              {job.flags.map((f, i) => <span key={`f${i}`} className="badge badge-warn text-xs">{f}</span>)}
+              {weatherFlags.map((f, i) => <span key={`w${i}`} className="badge badge-alert text-xs">{f}</span>)}
             </div>
           )}
         </div>
