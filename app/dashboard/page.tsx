@@ -183,6 +183,22 @@ export default function DashboardPage() {
               <span className="text-text-muted text-lg">{'›'}</span>
             </div>
           </Link>
+
+          <Link href="/quote" className="block">
+            <div className="card card-hover p-5 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                style={{ background: 'rgba(212,160,23,0.15)' }}>
+                <span>Q</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-text-primary font-semibold text-base">New Quote</h3>
+                <p className="text-text-muted text-sm mt-0.5">
+                  Build, send via WhatsApp, drop into calendar
+                </p>
+              </div>
+              <span className="text-text-muted text-lg">{'›'}</span>
+            </div>
+          </Link>
         </div>
 
         <div className="stagger-4 text-center py-4">
