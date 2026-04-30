@@ -1,7 +1,28 @@
 // Invoice system - PDF generation, WhatsApp delivery, payment tracking
 // Bank transfer payment. Tracks: draft -> sent -> viewed -> paid -> overdue
+//
+// KV access is wrapped to fail gracefully when the @vercel/kv module
+// isn't configured (local dev without KV credentials). Same pattern as
+// lib/duration-log.ts: dynamic import inside try/catch.
 
-import { kv } from '@vercel/kv'
+type KVClient = {
+  get: <T = unknown>(key: string) => Promise<T | null>
+  set: (key: string, value: unknown) => Promise<unknown>
+  incr: (key: string) => Promise<number>
+  expire: (key: string, seconds: number) => Promise<unknown>
+  sadd: (key: string, ...members: string[]) => Promise<unknown>
+  srem: (key: string, ...members: string[]) => Promise<unknown>
+  smembers: (key: string) => Promise<string[]>
+}
+
+async function getKv(): Promise<KVClient | null> {
+  try {
+    const mod = await import('@vercel/kv')
+    return mod.kv as unknown as KVClient
+  } catch {
+    return null
+  }
+}
 
 // -- Types --------------------------------------------------------------------
 
@@ -53,6 +74,10 @@ export interface DayInvoiceSummary {
 
 async function nextInvoiceNumber(date: string): Promise<string> {
   const key = `invoice_seq:${date.replace(/-/g, '')}`
+  const kv = await getKv()
+  if (!kv) {
+    return `INV-${date.replace(/-/g, '')}-${Date.now().toString().slice(-3)}`
+  }
   try {
     const seq = await kv.incr(key)
     await kv.expire(key, 60 * 60 * 24 * 365)
@@ -115,6 +140,8 @@ export async function createInvoice(params: {
 // -- KV persistence -----------------------------------------------------------
 
 export async function saveInvoice(invoice: Invoice): Promise<void> {
+  const kv = await getKv()
+  if (!kv) return
   try {
     await kv.set(`invoice:${invoice.id}`, JSON.stringify(invoice))
     await kv.sadd(`invoices:${invoice.issueDate}`, invoice.id)
@@ -125,6 +152,8 @@ export async function saveInvoice(invoice: Invoice): Promise<void> {
 }
 
 export async function getInvoice(id: string): Promise<Invoice | null> {
+  const kv = await getKv()
+  if (!kv) return null
   try {
     const data = await kv.get<string>(`invoice:${id}`)
     return data ? JSON.parse(data) : null
@@ -134,6 +163,8 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
 }
 
 export async function getInvoicesByDate(date: string): Promise<Invoice[]> {
+  const kv = await getKv()
+  if (!kv) return []
   try {
     const ids = (await kv.smembers(`invoices:${date}`)) as string[]
     const invoices = await Promise.all(ids.map(id => getInvoice(id)))
@@ -144,6 +175,8 @@ export async function getInvoicesByDate(date: string): Promise<Invoice[]> {
 }
 
 export async function getOutstandingInvoices(): Promise<Invoice[]> {
+  const kv = await getKv()
+  if (!kv) return []
   try {
     const sentIds = (await kv.smembers('invoices:status:sent')) as string[]
     const invoices = await Promise.all(sentIds.map(id => getInvoice(id)))
@@ -240,10 +273,13 @@ export async function markInvoiceSent(invoiceId: string, whatsappLink: string): 
     sentAt: new Date().toISOString(),
     whatsappLink,
   }
-  try {
-    await kv.srem(`invoices:status:${inv.status}`, invoiceId)
-    await kv.sadd('invoices:status:sent', invoiceId)
-  } catch {}
+  const kv = await getKv()
+  if (kv) {
+    try {
+      await kv.srem(`invoices:status:${inv.status}`, invoiceId)
+      await kv.sadd('invoices:status:sent', invoiceId)
+    } catch {}
+  }
   await saveInvoice(updated)
 }
 
@@ -255,10 +291,13 @@ export async function markInvoicePaid(invoiceId: string): Promise<void> {
     status: 'paid',
     paidAt: new Date().toISOString(),
   }
-  try {
-    await kv.srem(`invoices:status:${inv.status}`, invoiceId)
-    await kv.sadd('invoices:status:paid', invoiceId)
-  } catch {}
+  const kv = await getKv()
+  if (kv) {
+    try {
+      await kv.srem(`invoices:status:${inv.status}`, invoiceId)
+      await kv.sadd('invoices:status:paid', invoiceId)
+    } catch {}
+  }
   await saveInvoice(updated)
 }
 
