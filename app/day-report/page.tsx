@@ -7,6 +7,7 @@ import { DayPlan } from '@/lib/claude'
 import { buildReviewRequestLink } from '@/lib/review-request'
 import { ClientProfile, pitchHidden } from '@/lib/client-profiles'
 import { buildContractPitchMessage, buildContractPitchLink, checkPitchEligibility, monthlySaving } from '@/lib/contract-pitch'
+import { computeBarryRoi, formatRoiHeadline } from '@/lib/barry-roi'
 
 export default function DayReportPage() {
   const [report, setReport] = useState<DayReport | null>(null)
@@ -156,6 +157,45 @@ export default function DayReportPage() {
                 colour="var(--text-secondary)"
               />
             </div>
+
+            {report.barryWorked && (() => {
+              const roi = computeBarryRoi(report.completedJobs, report.barryWorked)
+              const positive = roi.netRoi >= 0
+              const headline = formatRoiHeadline(roi)
+              return (
+                <div className="card p-4" style={{
+                  borderColor: positive ? 'var(--brand-green)' : 'var(--status-warn)',
+                }}>
+                  <p className="text-text-muted text-xs font-mono uppercase tracking-widest mb-2">Barry day summary</p>
+                  <div className="grid grid-cols-3 gap-3 text-center mb-3">
+                    <div>
+                      <p className="font-display text-lg font-bold text-text-secondary">£{roi.barryCost}</p>
+                      <p className="text-text-muted text-xs">Day rate</p>
+                    </div>
+                    <div>
+                      <p className="font-display text-lg font-bold" style={{ color: 'var(--brand-blue-light)' }}>£{roi.barryEnabledRevenue}</p>
+                      <p className="text-text-muted text-xs">Enabled</p>
+                    </div>
+                    <div>
+                      <p className="font-display text-lg font-bold" style={{
+                        color: positive ? 'var(--brand-green)' : 'var(--status-alert)',
+                      }}>{roi.netRoi >= 0 ? '+' : '-'}£{Math.abs(roi.netRoi)}</p>
+                      <p className="text-text-muted text-xs">Net ROI</p>
+                    </div>
+                  </div>
+                  <p className="text-text-secondary text-xs leading-relaxed">{headline}</p>
+                  {roi.jobsBarryEnabled.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {roi.jobsBarryEnabled.map((j, i) => (
+                        <li key={i} className="text-text-muted text-xs">
+                          {j.clientName} - £{j.price} ({j.soloMinutes}m solo)
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )
+            })()}
 
             <div className="card p-4">
               <p className="text-text-muted text-xs font-mono uppercase tracking-widest mb-3">Timing breakdown</p>
