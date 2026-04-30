@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { DayPlan, ScheduledJob } from '@/lib/claude'
+import { buildReviewRequestLink } from '@/lib/review-request'
 
 type JobStatus = 'pending' | 'in-progress' | 'departing' | 'done'
 
@@ -222,6 +223,7 @@ export default function LivePage() {
       photosBefore: js.photosBefore.length,
       photosAfter: js.photosAfter.length,
       facebookPosted: js.facebookPosted,
+      afterPhotoUrl: js.photosAfter.find(p => p.url.startsWith('https://'))?.url,
     }
     const existing = JSON.parse(sessionStorage.getItem('wgp_completed_jobs') || '[]')
     existing.push(completedSummary)
@@ -451,6 +453,33 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
           <button onClick={onStartDeparture} className="btn-primary w-full py-3 text-sm" style={{ background: 'var(--brand-blue)' }}>Job done - ready to leave</button>
         </div>
       )}
+
+      {status === 'done' && (() => {
+        const reviewLink = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_LINK || ''
+        const afterPhoto = photosAfter.find(p => p.url.startsWith('https://'))?.url
+        if (!reviewLink) return null
+        const waLink = buildReviewRequestLink({
+          clientName: job.clientName,
+          afterPhotoUrl: afterPhoto,
+          googleReviewLink: reviewLink,
+        })
+        return (
+          <div className="px-4 pb-4 border-t border-surface-border pt-3">
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary w-full py-3 text-sm text-center block"
+              style={{ background: 'var(--brand-green)' }}
+            >
+              Request Google Review via WhatsApp
+            </a>
+            <p className="text-text-muted text-xs text-center mt-2">
+              Opens WhatsApp with a pre-filled message. You pick the contact.
+            </p>
+          </div>
+        )
+      })()}
 
       {status === 'departing' && (
         <div className="px-4 pb-4 space-y-3 border-t border-surface-border pt-3">

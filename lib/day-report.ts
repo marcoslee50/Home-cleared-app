@@ -18,6 +18,7 @@ export interface CompletedJobSummary {
   photosBefore: number
   photosAfter: number
   facebookPosted: boolean
+  afterPhotoUrl?: string         // first https:// after photo URL (Vercel Blob)
   invoiceId?: string
   invoiceStatus?: string
 }

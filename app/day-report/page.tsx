@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DayReport, getAccuracyColour } from '@/lib/day-report'
 import { DayPlan } from '@/lib/claude'
+import { buildReviewRequestLink } from '@/lib/review-request'
 
 export default function DayReportPage() {
   const [report, setReport] = useState<DayReport | null>(null)
@@ -137,6 +138,40 @@ export default function DayReportPage() {
                 {report.tomorrowFlags.map((f, i) => (
                   <p key={i} className="text-sm text-text-secondary mt-1">{f}</p>
                 ))}
+              </div>
+            )}
+
+            {report.completedJobs.length > 0 && (
+              <div className="card overflow-hidden">
+                <div className="px-4 py-3 border-b border-surface-border">
+                  <p className="text-text-muted text-xs font-mono uppercase tracking-widest">Request Google reviews</p>
+                </div>
+                {report.completedJobs.map(cj => {
+                  const reviewLink = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_LINK || ''
+                  const waLink = reviewLink
+                    ? buildReviewRequestLink({
+                        clientName: cj.job.clientName,
+                        afterPhotoUrl: cj.afterPhotoUrl,
+                        googleReviewLink: reviewLink,
+                      })
+                    : ''
+                  return (
+                    <div key={cj.job.id} className="px-4 py-3 flex items-center justify-between border-b border-surface-border last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-text-primary text-sm truncate">{cj.job.clientName}</p>
+                        <p className="text-text-muted text-xs">{cj.finishedAt} - {cj.actualDuration}m</p>
+                      </div>
+                      {waLink ? (
+                        <a href={waLink} target="_blank" rel="noopener noreferrer"
+                          className="badge badge-green text-xs ml-3" style={{ cursor: 'pointer' }}>
+                          Request review
+                        </a>
+                      ) : (
+                        <span className="text-text-muted text-xs ml-3">Set review link in env</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
