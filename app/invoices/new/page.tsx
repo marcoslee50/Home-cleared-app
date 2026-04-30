@@ -3,6 +3,8 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 interface LineItem { description: string; quantity: number; unitPrice: number; total: number }
 
@@ -44,9 +46,6 @@ function NewInvoiceForm() {
 
   const generatePDF = async (invoice: Record<string, unknown>): Promise<string | null> => {
     try {
-      const { jsPDF } = await import('jspdf')
-      const { default: autoTable } = await import('jspdf-autotable')
-
       const cfgRes = await fetch('/api/invoice-config')
       const cfg = await cfgRes.json()
 
