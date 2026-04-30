@@ -213,6 +213,20 @@ export default function LivePage() {
     ))
     setUpdating(jobId)
 
+    const completedSummary = {
+      job: js.job,
+      arrivedAt,
+      finishedAt: now,
+      actualDuration: actual,
+      estimatedDuration: js.job.estimatedDuration,
+      photosBefore: js.photosBefore.length,
+      photosAfter: js.photosAfter.length,
+      facebookPosted: js.facebookPosted,
+    }
+    const existing = JSON.parse(sessionStorage.getItem('wgp_completed_jobs') || '[]')
+    existing.push(completedSummary)
+    sessionStorage.setItem('wgp_completed_jobs', JSON.stringify(existing))
+
     try {
       const res = await fetch('/api/update', {
         method: 'POST',
