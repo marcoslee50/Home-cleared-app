@@ -389,6 +389,17 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
   const [fbOutcome, setFbOutcome] = useState('')
   const [fbTemplate, setFbTemplate] = useState('after-short')
   const [showFbForm, setShowFbForm] = useState(false)
+  const [profile, setProfile] = useState<{ accessNotes: string; dogOnSite: boolean; parkingNotes: string; visitCount: number } | null>(null)
+  const [profileExpanded, setProfileExpanded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/clients?name=${encodeURIComponent(job.clientName)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(p => { if (!cancelled && p) setProfile(p) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [job.clientName])
 
   const statusColour: Record<JobStatus, string> = {
     pending: 'var(--text-muted)',
@@ -428,6 +439,31 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
           <div className="mt-2 pt-2 border-t border-surface-border flex gap-3 text-xs text-text-muted">
             <span>{arrivedAt} {'->'} {finishedAt} - {actualDuration}m</span>
             {actualDuration && <span style={{ color: actualDuration > job.estimatedDuration ? 'var(--status-warn)' : 'var(--brand-green)' }}>({actualDuration > job.estimatedDuration ? '+' : ''}{actualDuration - job.estimatedDuration}m)</span>}
+          </div>
+        )}
+
+        {profile && (profile.accessNotes || profile.dogOnSite || profile.parkingNotes || profile.visitCount > 0) && (
+          <div className="mt-2 pt-2 border-t border-surface-border">
+            <button
+              onClick={() => setProfileExpanded(v => !v)}
+              className="flex items-center justify-between w-full text-xs text-text-secondary"
+            >
+              <span className="flex items-center gap-2">
+                <span>Property notes</span>
+                {profile.dogOnSite && <span className="badge badge-warn">Dog on site</span>}
+                {profile.visitCount > 0 && <span className="text-text-muted">visit #{profile.visitCount + 1}</span>}
+              </span>
+              <span className="text-text-muted">{profileExpanded ? '^' : 'v'}</span>
+            </button>
+            {profileExpanded && (
+              <div className="mt-2 space-y-1 text-xs text-text-muted">
+                {profile.accessNotes && <p>Access: {profile.accessNotes}</p>}
+                {profile.parkingNotes && <p>Parking: {profile.parkingNotes}</p>}
+                {!profile.accessNotes && !profile.parkingNotes && (
+                  <p className="italic">No saved notes yet.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

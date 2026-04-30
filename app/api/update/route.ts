@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { processJobUpdate, JobUpdate, DayPlan } from '@/lib/claude'
 import { updateCalendarEvent } from '@/lib/calendar'
 import { logDuration, formatDurationLogLine } from '@/lib/duration-log'
+import { recordCompletedJob } from '@/lib/client-profiles'
 
 export async function POST(req: NextRequest) {
   try {
@@ -59,6 +60,18 @@ export async function POST(req: NextRequest) {
           operatives: operative,
           jobType: job.jobType,
           actualMins: actualDuration,
+        })
+
+        // Append to client profile (visit count, total spend, history)
+        await recordCompletedJob({
+          clientName: job.clientName,
+          address: job.address || '',
+          date: today,
+          jobType: job.jobType,
+          duration: actualDuration,
+          price: job.price || 0,
+          operative,
+          photoUrls: [],
         })
       }
 

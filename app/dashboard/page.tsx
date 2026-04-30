@@ -167,6 +167,22 @@ export default function DashboardPage() {
               <span className="text-text-muted text-lg">{'›'}</span>
             </div>
           </Link>
+
+          <Link href="/clients" className="block">
+            <div className="card card-hover p-5 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                style={{ background: 'rgba(75,143,212,0.15)' }}>
+                <span>C</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-text-primary font-semibold text-base">Clients</h3>
+                <p className="text-text-muted text-sm mt-0.5">
+                  Property notes, access info, job history
+                </p>
+              </div>
+              <span className="text-text-muted text-lg">{'›'}</span>
+            </div>
+          </Link>
         </div>
 
         <div className="stagger-4 text-center py-4">
