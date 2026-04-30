@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { DayPlan, ScheduledJob } from '@/lib/claude'
 import { buildReviewRequestLink } from '@/lib/review-request'
 import { buildOnMyWayMessage, buildOnMyWayLink, estimateEtaMinutes, roundEta } from '@/lib/on-my-way'
+import { UPSELL_SERVICES, UpsellService } from '@/lib/upsell'
 
 type JobStatus = 'pending' | 'in-progress' | 'departing' | 'done'
 
@@ -493,6 +494,7 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
             </div>
           </div>
           <textarea value={jobState.notes} onChange={e => onNotesChange(e.target.value)} placeholder="Notes (saved to calendar)..." className="w-full bg-surface-muted rounded-lg p-3 text-sm text-text-primary resize-none border border-surface-border focus:border-brand-green focus:outline-none" rows={2} />
+          <UpsellPanel job={job} />
           <button onClick={onStartDeparture} className="btn-primary w-full py-3 text-sm" style={{ background: 'var(--brand-blue)' }}>Job done - ready to leave</button>
         </div>
       )}
@@ -572,6 +574,98 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+function UpsellPanel({ job }: { job: ScheduledJob }) {
+  const [open, setOpen] = useState(false)
+  const [spotted, setSpotted] = useState('')
+  const [service, setService] = useState<UpsellService>('fence-repair')
+  const [estimatedPrice, setEstimatedPrice] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [savedState, setSavedState] = useState<null | { ok: boolean; webhookFired: boolean }>(null)
+
+  if (savedState) {
+    return (
+      <div className="rounded-xl p-3 border" style={{
+        borderColor: 'var(--brand-green)', background: 'var(--surface-muted)',
+      }}>
+        <p className="text-xs font-semibold" style={{ color: 'var(--brand-green)' }}>
+          Captured for follow-up
+          {savedState.webhookFired ? ' - sent to Kommo' : ' - saved locally (no n8n webhook)'}
+        </p>
+      </div>
+    )
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="btn-secondary w-full py-2 text-xs">
+        Spotted something?
+      </button>
+    )
+  }
+
+  const save = async () => {
+    if (!spotted.trim()) return
+    setSaving(true)
+    try {
+      const res = await fetch('/api/upsell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clientName: job.clientName,
+          address: job.address || '',
+          jobId: job.id,
+          spotted: spotted.trim(),
+          service,
+          estimatedPrice: estimatedPrice ? Number(estimatedPrice) : undefined,
+        }),
+      })
+      const data = await res.json()
+      setSavedState({ ok: !!data.ok, webhookFired: !!data.webhookFired })
+    } catch {
+      setSavedState({ ok: false, webhookFired: false })
+    }
+    setSaving(false)
+  }
+
+  return (
+    <div className="rounded-xl p-3 border space-y-2"
+      style={{ borderColor: 'var(--surface-border)', background: 'var(--surface-muted)' }}>
+      <p className="text-xs font-semibold text-text-secondary">Spotted something?</p>
+      <textarea
+        value={spotted}
+        onChange={e => setSpotted(e.target.value)}
+        placeholder="What did you notice? (e.g. fence panel rotting at the back)"
+        rows={2}
+        className="w-full bg-surface-card rounded-lg px-3 py-2 text-sm text-text-primary border border-surface-border focus:border-brand-green focus:outline-none resize-none"
+      />
+      <select
+        value={service}
+        onChange={e => setService(e.target.value as UpsellService)}
+        className="w-full bg-surface-card rounded-lg px-3 py-2 text-sm text-text-primary border border-surface-border focus:border-brand-green focus:outline-none"
+      >
+        {UPSELL_SERVICES.map(s => (
+          <option key={s.id} value={s.id}>{s.label}</option>
+        ))}
+      </select>
+      <input
+        type="number"
+        min="0"
+        step="5"
+        value={estimatedPrice}
+        onChange={e => setEstimatedPrice(e.target.value)}
+        placeholder="Rough £ estimate (optional)"
+        className="w-full bg-surface-card rounded-lg px-3 py-2 text-sm text-text-primary border border-surface-border focus:border-brand-green focus:outline-none"
+      />
+      <div className="flex gap-2">
+        <button onClick={save} disabled={saving || !spotted.trim()} className="btn-primary flex-1 py-2 text-xs">
+          {saving ? 'Saving...' : 'Save & follow up'}
+        </button>
+        <button onClick={() => setOpen(false)} className="btn-secondary px-3 py-2 text-xs">Cancel</button>
+      </div>
     </div>
   )
 }

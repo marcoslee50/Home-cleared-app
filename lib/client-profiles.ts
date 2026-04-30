@@ -2,6 +2,8 @@
 // job history, total spend. Stored in Vercel KV under client:{safeName}.
 // Same graceful-fallback pattern as lib/invoices.ts.
 
+import type { UpsellNote } from './upsell'
+
 export interface ClientJobHistoryEntry {
   date: string
   jobType: string
@@ -28,6 +30,7 @@ export interface ClientProfile {
   visitCount: number        // auto-increments on completed job; drives upsell prompt
   isMonthlyContract: boolean
   pitchDismissedAt?: string  // ISO; if present and < 30 days old, hide contract pitch
+  upsellNotes?: UpsellNote[] // things Marcos has spotted to follow up on
   createdAt: string
   updatedAt: string
 }
@@ -71,9 +74,17 @@ function newProfile(clientName: string, address: string): ClientProfile {
     notes: '',
     visitCount: 0,
     isMonthlyContract: false,
+    upsellNotes: [],
     createdAt: now,
     updatedAt: now,
   }
+}
+
+export async function appendUpsellNote(clientName: string, address: string, note: UpsellNote): Promise<ClientProfile> {
+  const profile = await getOrCreateClientProfile(clientName, address)
+  profile.upsellNotes = [...(profile.upsellNotes || []), note]
+  await saveClientProfile(profile)
+  return profile
 }
 
 const PITCH_HIDE_DAYS = 30

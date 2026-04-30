@@ -155,6 +155,31 @@ export default function ClientDetailPage() {
           )}
         </div>
 
+        {profile.upsellNotes && profile.upsellNotes.length > 0 && (
+          <div className="card overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-border">
+              <p className="text-text-muted text-xs font-mono uppercase tracking-widest">Spotted - follow up ({profile.upsellNotes.length})</p>
+            </div>
+            {profile.upsellNotes.slice().reverse().map((n, i) => (
+              <div key={i} className="px-4 py-3 border-b border-surface-border last:border-0">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-text-primary text-sm whitespace-pre-wrap">{n.spotted}</p>
+                    <p className="text-text-muted text-xs mt-1">
+                      {n.service.replace(/-/g, ' ')} - {new Date(n.spottedAt).toLocaleDateString('en-GB')}
+                    </p>
+                  </div>
+                  {typeof n.estimatedPrice === 'number' && (
+                    <span className="font-mono text-sm font-semibold flex-shrink-0" style={{ color: 'var(--brand-green)' }}>
+                      ~£{n.estimatedPrice}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="card overflow-hidden">
           <div className="px-4 py-3 border-b border-surface-border">
             <p className="text-text-muted text-xs font-mono uppercase tracking-widest">Job history</p>
