@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { DayPlan, ScheduledJob } from '@/lib/claude'
 import { buildReviewRequestLink } from '@/lib/review-request'
+import { buildOnMyWayMessage, buildOnMyWayLink, estimateEtaMinutes, roundEta } from '@/lib/on-my-way'
 
 type JobStatus = 'pending' | 'in-progress' | 'departing' | 'done'
 
@@ -432,7 +433,8 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
       </div>
 
       {status === 'pending' && (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-3 space-y-2">
+          <OnMyWayPanel job={job} />
           <button onClick={onArrive} className="btn-primary w-full py-3 text-sm">Mark Arrived</button>
         </div>
       )}
@@ -530,6 +532,93 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+function OnMyWayPanel({ job }: { job: ScheduledJob }) {
+  const [open, setOpen] = useState(false)
+  const [eta, setEta] = useState<number | null>(null)
+  const [etaLoading, setEtaLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const refreshPreview = (mins: number | null) => {
+    setMessage(buildOnMyWayMessage({
+      clientName: job.clientName,
+      etaMinutes: mins ?? undefined,
+    }))
+  }
+
+  const openPanel = () => {
+    setOpen(true)
+    refreshPreview(eta)
+    if (eta === null && !etaLoading) {
+      setEtaLoading(true)
+      // Best-effort ETA: ask the browser for current position, then call
+      // Distance Matrix. If anything fails, leave eta null - the message
+      // falls back to "shortly".
+      if (!navigator.geolocation || !job.address) {
+        setEtaLoading(false)
+        return
+      }
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          const raw = await estimateEtaMinutes(
+            { lat: pos.coords.latitude, lng: pos.coords.longitude },
+            job.address
+          )
+          const rounded = raw !== null ? roundEta(raw) : null
+          setEta(rounded)
+          refreshPreview(rounded)
+          setEtaLoading(false)
+        },
+        () => setEtaLoading(false),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      )
+    }
+  }
+
+  const send = () => {
+    // Reuse the encoded link, but with the (possibly edited) message
+    const encoded = encodeURIComponent(message)
+    const link = `https://wa.me/?text=${encoded}`
+    void buildOnMyWayLink   // keep import live; defensive against tree-shake
+    window.open(link, '_blank', 'noopener,noreferrer')
+    setOpen(false)
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={openPanel}
+        className="btn-secondary w-full py-2 text-xs"
+      >
+        Send on-my-way to {job.clientName.split(' ')[0]}
+      </button>
+    )
+  }
+
+  return (
+    <div className="rounded-xl p-3 border space-y-2"
+      style={{ borderColor: 'var(--surface-border)', background: 'var(--surface-muted)' }}>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-text-secondary">On-my-way preview</p>
+        {etaLoading && <span className="text-text-muted text-xs">Calculating ETA...</span>}
+        {!etaLoading && eta !== null && <span className="text-text-muted text-xs">ETA ~{eta} min</span>}
+      </div>
+      <textarea
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+        rows={3}
+        className="w-full bg-surface-card rounded-lg px-3 py-2 text-sm text-text-primary border border-surface-border focus:border-brand-green focus:outline-none resize-none"
+      />
+      <div className="flex gap-2">
+        <button onClick={send} className="btn-primary flex-1 py-2 text-xs">Send via WhatsApp</button>
+        <button onClick={() => setOpen(false)} className="btn-secondary px-3 py-2 text-xs">Cancel</button>
+      </div>
+      <p className="text-text-muted text-xs">
+        Opens WhatsApp - you pick the contact. Never sends automatically.
+      </p>
     </div>
   )
 }
