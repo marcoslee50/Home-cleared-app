@@ -4,6 +4,38 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { DayPlan } from '@/lib/claude'
 
+function ShareDayViewButton() {
+  const [shared, setShared] = useState(false)
+  const dayViewUrl = typeof window !== 'undefined' ? `${window.location.origin}/barry/day` : '/barry/day'
+  const message = `Morning Barry, here's today's plan: ${dayViewUrl}`
+  const waLink = `https://wa.me/?text=${encodeURIComponent(message)}`
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(dayViewUrl)
+      setShared(true)
+      setTimeout(() => setShared(false), 2500)
+    } catch {}
+  }
+
+  return (
+    <div className="card p-3 space-y-2" style={{ background: 'var(--surface-muted)' }}>
+      <p className="text-text-muted text-xs">
+        Read-only day view for Barry - no login needed.
+      </p>
+      <div className="flex gap-2">
+        <a href={waLink} target="_blank" rel="noopener noreferrer"
+          className="btn-primary flex-1 py-2 text-xs text-center" style={{ background: '#25D366' }}>
+          Send via WhatsApp
+        </a>
+        <button onClick={copyLink} className="btn-secondary px-3 py-2 text-xs">
+          {shared ? 'Copied' : 'Copy link'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function BarryPage() {
   const [plan, setPlan] = useState<DayPlan | null>(null)
   const [briefing, setBriefing] = useState('')
@@ -128,6 +160,8 @@ export default function BarryPage() {
                 >
                   {copied ? 'Copied to clipboard!' : 'Copy message'}
                 </button>
+
+                <ShareDayViewButton />
 
                 <button
                   onClick={openMessenger}

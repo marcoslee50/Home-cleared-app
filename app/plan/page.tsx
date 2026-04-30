@@ -68,6 +68,14 @@ export default function PlanPage() {
       sessionStorage.setItem('wgp_plan', JSON.stringify(data.plan))
       setPlan(data.plan)
       setState('ready')
+
+      // Publish a Barry-safe slice to KV so /barry/day works on
+      // Barry's phone without him needing the PIN. Best-effort.
+      fetch('/api/plan/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: data.plan, pickupLocation: form.startLocation }),
+      }).catch(() => {})
     } catch (err) {
       setError(String(err))
       setState('error')
