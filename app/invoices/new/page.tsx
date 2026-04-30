@@ -47,6 +47,9 @@ function NewInvoiceForm() {
       const { jsPDF } = await import('jspdf')
       const { default: autoTable } = await import('jspdf-autotable')
 
+      const cfgRes = await fetch('/api/invoice-config')
+      const cfg = await cfgRes.json()
+
       const doc = new jsPDF()
       const pageW = doc.internal.pageSize.getWidth()
 
@@ -110,9 +113,9 @@ function NewInvoiceForm() {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
       doc.text([
-        `Bank: ${process.env.NEXT_PUBLIC_BANK_NAME || 'Please contact us for bank details'}`,
-        `Sort code: ${process.env.NEXT_PUBLIC_SORT_CODE || ''}`,
-        `Account: ${process.env.NEXT_PUBLIC_ACCOUNT_NUMBER || ''}`,
+        `Bank: ${cfg.bankName || 'Please contact us for bank details'}`,
+        `Sort code: ${cfg.sortCode || ''}`,
+        `Account: ${cfg.accountNumber || ''}`,
         `Reference: ${invoice.id}`,
       ], 15, finalY + 7)
 
