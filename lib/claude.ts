@@ -17,7 +17,8 @@ export interface PlanningContext {
 }
 
 export interface ScheduledJob {
-  id: string
+  id: string                   // Google Calendar event ID
+  calendarId: string           // Source Google Calendar ID (passed from CalendarJob)
   clientName: string
   address: string
   jobType: string
@@ -64,7 +65,17 @@ export async function buildDayPlan(ctx: PlanningContext): Promise<DayPlan> {
   const content = message.content[0]
   if (content.type !== 'text') throw new Error('Unexpected response type')
 
-  return parseDayPlan(content.text)
+  const plan = parseDayPlan(content.text)
+
+  // Defensive: backfill calendarId from the source CalendarJob if the AI
+  // omitted it. job.id is the event ID, not the calendar ID.
+  const sourceById = new Map(ctx.jobs.map(j => [j.id, j.calendarId]))
+  plan.jobs = plan.jobs.map(j => ({
+    ...j,
+    calendarId: j.calendarId || sourceById.get(j.id) || '',
+  }))
+
+  return plan
 }
 
 // -- Mode B: Update after job completion --------------------------------------
@@ -196,7 +207,8 @@ Return a JSON object matching this exact structure:
   "estimatedFinish": "HH:MM",
   "jobs": [
     {
-      "id": "calendar_event_id",
+      "id": "calendar_event_id (copy from source job's id)",
+      "calendarId": "calendar_id (copy from source job's calendarId verbatim)",
       "clientName": "string",
       "address": "string",
       "jobType": "string (e.g. 'Regular garden maintenance')",

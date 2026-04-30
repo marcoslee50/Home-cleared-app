@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       }
 
       await updateCalendarEvent({
-        calendarId: job.id.includes('@') ? job.id : 'primary',
+        calendarId: job.calendarId || 'primary',
         eventId: update.jobId,
         title: `${job.emoji} ${job.clientName}`,
         descriptionAppend: descriptionLines.join('\n'),
