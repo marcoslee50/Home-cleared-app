@@ -58,8 +58,28 @@ If your garden needs attention, give us a call.
 
 // -- Fill template variables --------------------------------------------------
 
-export function fillTemplate(templateId: string, data: FacebookPostData): string {
-  const template = DEFAULT_TEMPLATES[templateId] || DEFAULT_TEMPLATES['after-short']
+// Pull templates from KV when available so Marcos can edit on the
+// Settings page without redeploying. Falls back to DEFAULT_TEMPLATES.
+function kvConfigured(): boolean {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+}
+
+async function loadTemplates(): Promise<Record<string, string>> {
+  if (!kvConfigured()) return DEFAULT_TEMPLATES
+  try {
+    const mod = await import('@vercel/kv')
+    const data = await mod.kv.get<string>('settings:fb_templates')
+    if (data) {
+      const parsed = JSON.parse(data) as Record<string, string>
+      return { ...DEFAULT_TEMPLATES, ...parsed }
+    }
+  } catch {}
+  return DEFAULT_TEMPLATES
+}
+
+export async function fillTemplate(templateId: string, data: FacebookPostData): Promise<string> {
+  const templates = await loadTemplates()
+  const template = templates[templateId] || templates['after-short']
 
   const vars: Record<string, string> = {
     area: data.clientArea,
@@ -84,7 +104,7 @@ export async function postToFacebookPage(data: FacebookPostData): Promise<PostRe
     throw new Error('Facebook credentials not configured')
   }
 
-  const message = fillTemplate(data.templateId, data)
+  const message = await fillTemplate(data.templateId, data)
 
   try {
     if (data.photoUrls.length > 0) {

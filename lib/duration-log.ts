@@ -17,7 +17,12 @@ interface ClientDurationData {
 
 // -- KV helpers ---------------------------------------------------------------
 
+function kvConfigured(): boolean {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+}
+
 async function kvGet(key: string): Promise<string | null> {
+  if (!kvConfigured()) return null
   try {
     const { kv } = await import('@vercel/kv')
     return await kv.get<string>(key)
@@ -27,6 +32,7 @@ async function kvGet(key: string): Promise<string | null> {
 }
 
 async function kvSet(key: string, value: string): Promise<void> {
+  if (!kvConfigured()) return
   try {
     const { kv } = await import('@vercel/kv')
     await kv.set(key, value)
@@ -69,6 +75,7 @@ export async function getClientDuration(clientName: string): Promise<number | nu
 }
 
 export async function getAllClientDurations(): Promise<Record<string, number>> {
+  if (!kvConfigured()) return {}
   try {
     const { kv } = await import('@vercel/kv')
     const keys = await kv.keys('duration:*')

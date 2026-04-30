@@ -7,6 +7,8 @@ import {
   ClientProfile,
 } from '@/lib/client-profiles'
 
+export const dynamic = 'force-dynamic'
+
 // GET /api/clients              - list all profiles
 // GET /api/clients?name=X       - fetch one
 // POST /api/clients             - create or update (action: 'save' | 'create')

@@ -39,6 +39,14 @@ export default function DayReportPage() {
     return () => { cancelled = true }
   }, [report])
 
+  const [reviewLink, setReviewLink] = useState(process.env.NEXT_PUBLIC_GOOGLE_REVIEW_LINK || '')
+  useEffect(() => {
+    fetch('/api/invoice-config')
+      .then(r => r.ok ? r.json() : null)
+      .then(c => { if (c?.googleReviewLink) setReviewLink(c.googleReviewLink) })
+      .catch(() => {})
+  }, [])
+
   const dismissPitch = async (clientName: string) => {
     setPitchProfiles(prev => prev.filter(p => p.clientName !== clientName))
     await fetch('/api/clients', {
@@ -233,7 +241,6 @@ export default function DayReportPage() {
                   <p className="text-text-muted text-xs font-mono uppercase tracking-widest">Request Google reviews</p>
                 </div>
                 {report.completedJobs.map(cj => {
-                  const reviewLink = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_LINK || ''
                   const waLink = reviewLink
                     ? buildReviewRequestLink({
                         clientName: cj.job.clientName,

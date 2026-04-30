@@ -391,12 +391,17 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
   const [showFbForm, setShowFbForm] = useState(false)
   const [profile, setProfile] = useState<{ accessNotes: string; dogOnSite: boolean; parkingNotes: string; visitCount: number } | null>(null)
   const [profileExpanded, setProfileExpanded] = useState(false)
+  const [reviewLink, setReviewLink] = useState(process.env.NEXT_PUBLIC_GOOGLE_REVIEW_LINK || '')
 
   useEffect(() => {
     let cancelled = false
     fetch(`/api/clients?name=${encodeURIComponent(job.clientName)}`)
       .then(r => r.ok ? r.json() : null)
       .then(p => { if (!cancelled && p) setProfile(p) })
+      .catch(() => {})
+    fetch('/api/invoice-config')
+      .then(r => r.ok ? r.json() : null)
+      .then(c => { if (!cancelled && c?.googleReviewLink) setReviewLink(c.googleReviewLink) })
       .catch(() => {})
     return () => { cancelled = true }
   }, [job.clientName])
@@ -493,7 +498,6 @@ function LiveJobCard({ jobState, isUpdating, onArrive, onPhoto, onStartDeparture
       )}
 
       {status === 'done' && (() => {
-        const reviewLink = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_LINK || ''
         const afterPhoto = photosAfter.find(p => p.url.startsWith('https://'))?.url
         if (!reviewLink) return null
         const waLink = buildReviewRequestLink({

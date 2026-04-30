@@ -38,7 +38,12 @@ type KVClient = {
   keys: (pattern: string) => Promise<string[]>
 }
 
+function kvConfigured(): boolean {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN)
+}
+
 async function getKv(): Promise<KVClient | null> {
+  if (!kvConfigured()) return null
   try {
     const mod = await import('@vercel/kv')
     return mod.kv as unknown as KVClient
