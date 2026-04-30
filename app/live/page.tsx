@@ -510,5 +510,3 @@ function BottomNav({ active }: { active: string }) {
     </nav>
   )
 }
-
-type JobStatus = 'pending' | 'travelling' | 'in-progress' | 'done'
