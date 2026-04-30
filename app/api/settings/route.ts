@@ -6,6 +6,7 @@ import {
   saveInvoice,
   saveReviewLink,
   saveBarryDebtNote,
+  saveCampaigns,
 } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     if (section === 'invoice')     { await saveInvoice(value);     return NextResponse.json({ ok: true }) }
     if (section === 'reviewLink')  { await saveReviewLink(value);  return NextResponse.json({ ok: true }) }
     if (section === 'barryDebtNote') { await saveBarryDebtNote(value); return NextResponse.json({ ok: true }) }
+    if (section === 'campaigns')   { await saveCampaigns(value);    return NextResponse.json({ ok: true }) }
 
     return NextResponse.json({ error: 'Unknown section' }, { status: 400 })
   } catch (error) {

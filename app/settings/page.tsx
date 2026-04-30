@@ -13,6 +13,7 @@ import {
   DEFAULT_INVOICE,
   DEFAULT_BARRY_DEBT_NOTE,
 } from '@/lib/settings'
+import { Campaign, DEFAULT_CAMPAIGNS, evaluateCampaigns } from '@/lib/campaigns'
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -23,6 +24,7 @@ export default function SettingsPage() {
   const [invoice, setInvoice] = useState<InvoiceSettings>(DEFAULT_INVOICE)
   const [reviewLink, setReviewLink] = useState('')
   const [barryDebtNote, setBarryDebtNote] = useState<BarryDebtNote>(DEFAULT_BARRY_DEBT_NOTE)
+  const [campaigns, setCampaigns] = useState<Campaign[]>(DEFAULT_CAMPAIGNS)
   const [notifPermission, setNotifPermission] = useState<NotificationPermission | 'unsupported'>('default')
 
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({})
@@ -36,6 +38,7 @@ export default function SettingsPage() {
         setInvoice(s.invoice)
         setReviewLink(s.reviewLink || '')
         setBarryDebtNote(s.barryDebtNote)
+        setCampaigns(s.campaigns?.length ? s.campaigns : DEFAULT_CAMPAIGNS)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -202,6 +205,79 @@ export default function SettingsPage() {
                 Enable notifications
               </button>
             )}
+          </section>
+
+          {/* I. Seasonal campaigns */}
+          <section className="card p-4 space-y-3">
+            <p className="text-text-muted text-xs font-mono uppercase tracking-widest">Seasonal campaigns</p>
+            <p className="text-text-muted text-xs">
+              Trigger dates are fixed. Edit the body or audience as needed. Active campaigns surface a Copy / Open WhatsApp prompt - never auto-send.
+            </p>
+            {evaluateCampaigns(campaigns).map(({ campaign: c, active, daysIntoWindow, daysRemaining }, idx) => {
+              const message = c.body.replace(/\{\{firstName\}\}/g, '<name>')
+              const waLink = `https://wa.me/?text=${encodeURIComponent(c.body.replace(/\{\{firstName\}\}/g, 'there'))}`
+              return (
+                <div key={c.id} className="rounded-xl p-3 border space-y-2"
+                  style={{
+                    borderColor: active ? 'var(--brand-green)' : 'var(--surface-border)',
+                    background: 'var(--surface-muted)',
+                  }}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-text-primary text-sm font-semibold">{c.label}</p>
+                      <p className="text-text-muted text-xs">
+                        Triggers {String(c.triggerDay).padStart(2,'0')}/{String(c.triggerMonth).padStart(2,'0')} - audience: {c.audience}
+                      </p>
+                    </div>
+                    {active && (
+                      <span className="badge badge-green">
+                        Active{daysIntoWindow > 0 ? ` - day ${daysIntoWindow + 1}/${daysIntoWindow + daysRemaining}` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  <textarea
+                    value={c.body}
+                    onChange={e => {
+                      const body = e.target.value
+                      setCampaigns(prev => prev.map((x, i) => i === idx ? { ...x, body } : x))
+                    }}
+                    rows={5}
+                    className="w-full bg-surface-card rounded-lg p-2 text-xs text-text-primary border border-surface-border focus:border-brand-green focus:outline-none resize-none font-mono"
+                  />
+
+                  <select
+                    value={c.audience}
+                    onChange={e => {
+                      const audience = e.target.value as Campaign['audience']
+                      setCampaigns(prev => prev.map((x, i) => i === idx ? { ...x, audience } : x))
+                    }}
+                    className="w-full bg-surface-card rounded-lg p-2 text-xs text-text-primary border border-surface-border focus:border-brand-green focus:outline-none"
+                  >
+                    <option value="all">All clients</option>
+                    <option value="landlords">Landlords only</option>
+                  </select>
+
+                  {active && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => navigator.clipboard.writeText(c.body.replace(/\{\{firstName\}\}/g, 'there'))}
+                        className="btn-secondary flex-1 py-2 text-xs"
+                      >
+                        Copy template
+                      </button>
+                      <a href={waLink} target="_blank" rel="noopener noreferrer"
+                        className="btn-primary flex-1 py-2 text-xs text-center" style={{ background: '#25D366' }}>
+                        Open WhatsApp
+                      </a>
+                    </div>
+                  )}
+
+                  <p className="text-text-muted text-xs">Variables available: {'{{firstName}}'} - example fill: "{message.split('\n')[0]}"</p>
+                </div>
+              )
+            })}
+            <SaveButton state={saveStates.campaigns} onClick={() => saveSection('campaigns', campaigns)} />
           </section>
 
           {/* H. Barry private note */}

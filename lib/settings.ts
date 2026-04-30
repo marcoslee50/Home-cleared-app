@@ -32,6 +32,7 @@ export interface AppSettings {
   invoice?: InvoiceSettings
   reviewLink?: string        // overrides NEXT_PUBLIC_GOOGLE_REVIEW_LINK
   barryDebtNote?: BarryDebtNote
+  campaigns?: Campaign[]
 }
 
 const DEFAULT_FB_TEMPLATES: FacebookTemplates = {
@@ -84,6 +85,8 @@ const DEFAULT_BARRY_DEBT_NOTE: BarryDebtNote = {
   updatedAt: '',
 }
 
+import { Campaign, DEFAULT_CAMPAIGNS } from './campaigns'
+
 // Guard against @vercel/kv's synchronous env-var validation by checking
 // before any method call. The KV proxy throws synchronously on first
 // invocation if KV_REST_API_URL / KV_REST_API_TOKEN are missing, which
@@ -114,14 +117,15 @@ async function writeKey(key: string, value: unknown): Promise<void> {
 }
 
 export async function loadSettings(): Promise<Required<AppSettings>> {
-  const [fbTemplates, barry, invoice, reviewLink, barryDebtNote] = await Promise.all([
+  const [fbTemplates, barry, invoice, reviewLink, barryDebtNote, campaigns] = await Promise.all([
     readKey('settings:fb_templates', DEFAULT_FB_TEMPLATES),
     readKey('settings:barry', DEFAULT_BARRY),
     readKey('settings:invoice', DEFAULT_INVOICE),
     readKey('settings:review_link', ''),
     readKey('settings:barry_debt', DEFAULT_BARRY_DEBT_NOTE),
+    readKey('settings:campaigns', DEFAULT_CAMPAIGNS),
   ])
-  return { fbTemplates, barry, invoice, reviewLink, barryDebtNote }
+  return { fbTemplates, barry, invoice, reviewLink, barryDebtNote, campaigns }
 }
 
 export async function saveFbTemplates(t: FacebookTemplates) { await writeKey('settings:fb_templates', t) }
@@ -129,6 +133,7 @@ export async function saveBarry(b: BarrySettings) { await writeKey('settings:bar
 export async function saveInvoice(i: InvoiceSettings) { await writeKey('settings:invoice', i) }
 export async function saveReviewLink(link: string) { await writeKey('settings:review_link', link) }
 export async function saveBarryDebtNote(n: BarryDebtNote) { await writeKey('settings:barry_debt', n) }
+export async function saveCampaigns(c: Campaign[]) { await writeKey('settings:campaigns', c) }
 
 export {
   DEFAULT_FB_TEMPLATES,
