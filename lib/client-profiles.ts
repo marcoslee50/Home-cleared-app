@@ -27,6 +27,7 @@ export interface ClientProfile {
   referredBy?: string       // who introduced this client (referral scheme)
   visitCount: number        // auto-increments on completed job; drives upsell prompt
   isMonthlyContract: boolean
+  pitchDismissedAt?: string  // ISO; if present and < 30 days old, hide contract pitch
   createdAt: string
   updatedAt: string
 }
@@ -68,6 +69,16 @@ function newProfile(clientName: string, address: string): ClientProfile {
     createdAt: now,
     updatedAt: now,
   }
+}
+
+const PITCH_HIDE_DAYS = 30
+
+export function pitchHidden(profile: { pitchDismissedAt?: string }): boolean {
+  if (!profile.pitchDismissedAt) return false
+  const dismissedMs = new Date(profile.pitchDismissedAt).getTime()
+  if (!Number.isFinite(dismissedMs)) return false
+  const ageDays = (Date.now() - dismissedMs) / (1000 * 60 * 60 * 24)
+  return ageDays < PITCH_HIDE_DAYS
 }
 
 export async function getClientProfile(clientName: string): Promise<ClientProfile | null> {

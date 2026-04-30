@@ -5,15 +5,48 @@ import Link from 'next/link'
 import { DayReport, getAccuracyColour } from '@/lib/day-report'
 import { DayPlan } from '@/lib/claude'
 import { buildReviewRequestLink } from '@/lib/review-request'
+import { ClientProfile, pitchHidden } from '@/lib/client-profiles'
+import { buildContractPitchMessage, buildContractPitchLink, checkPitchEligibility, monthlySaving } from '@/lib/contract-pitch'
 
 export default function DayReportPage() {
   const [report, setReport] = useState<DayReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [pitchProfiles, setPitchProfiles] = useState<ClientProfile[]>([])
 
   useEffect(() => {
     generateReport()
   }, [])
+
+  // Load pitch-eligible profiles for the completed jobs (visitCount >= 3,
+  // not on contract, not dismissed in last 30 days)
+  useEffect(() => {
+    if (!report?.completedJobs?.length) return
+    let cancelled = false
+    Promise.all(
+      report.completedJobs.map(cj =>
+        fetch(`/api/clients?name=${encodeURIComponent(cj.job.clientName)}`)
+          .then(r => r.ok ? r.json() : null)
+          .catch(() => null)
+      )
+    ).then(results => {
+      if (cancelled) return
+      const candidates = results
+        .filter((p): p is ClientProfile => !!p)
+        .filter(p => checkPitchEligibility(p).eligible && !pitchHidden(p))
+      setPitchProfiles(candidates)
+    })
+    return () => { cancelled = true }
+  }, [report])
+
+  const dismissPitch = async (clientName: string) => {
+    setPitchProfiles(prev => prev.filter(p => p.clientName !== clientName))
+    await fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'dismiss-pitch', clientName }),
+    })
+  }
 
   const generateReport = async () => {
     setLoading(true)
@@ -138,6 +171,59 @@ export default function DayReportPage() {
                 {report.tomorrowFlags.map((f, i) => (
                   <p key={i} className="text-sm text-text-secondary mt-1">{f}</p>
                 ))}
+              </div>
+            )}
+
+            {pitchProfiles.length > 0 && (
+              <div className="card overflow-hidden" style={{ borderColor: 'var(--brand-blue-light)' }}>
+                <div className="px-4 py-3 border-b border-surface-border">
+                  <p className="text-xs font-mono uppercase tracking-widest" style={{ color: 'var(--brand-blue-light)' }}>
+                    Pitch monthly plan ({pitchProfiles.length})
+                  </p>
+                </div>
+                {pitchProfiles.map(p => {
+                  const message = buildContractPitchMessage(p.clientName)
+                  const waLink = buildContractPitchLink(p.clientName, p.phone)
+                  return (
+                    <div key={p.clientName} className="px-4 py-3 border-b border-surface-border last:border-0 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-text-primary text-sm">{p.clientName}</p>
+                          <p className="text-text-muted text-xs">
+                            {p.visitCount} visits - currently £{p.averageJobDuration ? Math.round(p.totalSpend / p.visitCount) : '-'}/visit avg
+                          </p>
+                          <p className="text-text-muted text-xs">Monthly plan would save them ~£{monthlySaving()}/month</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-text-secondary italic whitespace-pre-wrap rounded-lg px-3 py-2" style={{ background: 'var(--surface-muted)' }}>
+                        {message}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => navigator.clipboard.writeText(message)}
+                          className="btn-secondary flex-1 py-2 text-xs"
+                        >
+                          Copy
+                        </button>
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary flex-1 py-2 text-xs text-center"
+                          style={{ background: 'var(--brand-blue)' }}
+                        >
+                          Open WhatsApp
+                        </a>
+                        <button
+                          onClick={() => dismissPitch(p.clientName)}
+                          className="btn-secondary px-3 py-2 text-xs"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
 

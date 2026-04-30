@@ -46,6 +46,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
+    if (action === 'dismiss-pitch') {
+      const profile = await getClientProfile(body.clientName)
+      if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      profile.pitchDismissedAt = new Date().toISOString()
+      await saveClientProfile(profile)
+      return NextResponse.json({ ok: true })
+    }
+
+    if (action === 'mark-contract') {
+      const profile = await getClientProfile(body.clientName)
+      if (!profile) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      profile.isMonthlyContract = !!body.isMonthlyContract
+      await saveClientProfile(profile)
+      return NextResponse.json({ ok: true })
+    }
+
     return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   } catch (error) {
     console.error('Clients API error:', error)
