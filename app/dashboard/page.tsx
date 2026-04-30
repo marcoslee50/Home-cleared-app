@@ -11,8 +11,16 @@ interface TodaySummary {
   hasJobs: boolean
 }
 
+interface HealthSummary {
+  green: number
+  amber: number
+  red: number
+  new: number
+}
+
 export default function DashboardPage() {
   const [summary, setSummary] = useState<TodaySummary | null>(null)
+  const [health, setHealth] = useState<HealthSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [time, setTime] = useState('')
   const [greeting, setGreeting] = useState('')
@@ -48,6 +56,11 @@ export default function DashboardPage() {
       })
       .catch(() => setSummary({ jobCount: 0, totalRevenue: 0, tbcRevenue: 0, hasJobs: false }))
       .finally(() => setLoading(false))
+
+    fetch('/api/client-health')
+      .then(r => r.json())
+      .then(d => setHealth(d.summary))
+      .catch(() => {})
   }, [])
 
   const handleLogout = () => {
@@ -118,6 +131,26 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {health && (health.green + health.amber + health.red + health.new > 0) && (
+          <div className="stagger-2 card p-4 mb-4">
+            <p className="text-text-muted text-xs font-mono uppercase tracking-widest mb-3">Client health</p>
+            <div className="grid grid-cols-3 gap-2">
+              <Link href="/clients?health=green" className="bg-surface-muted rounded-lg p-3 text-center block">
+                <div className="font-display text-2xl font-bold" style={{ color: 'var(--brand-green)' }}>{health.green}</div>
+                <div className="text-text-muted text-xs mt-1">All good</div>
+              </Link>
+              <Link href="/clients?health=amber" className="bg-surface-muted rounded-lg p-3 text-center block">
+                <div className="font-display text-2xl font-bold" style={{ color: 'var(--status-warn)' }}>{health.amber}</div>
+                <div className="text-text-muted text-xs mt-1">Check in</div>
+              </Link>
+              <Link href="/clients?health=red" className="bg-surface-muted rounded-lg p-3 text-center block">
+                <div className="font-display text-2xl font-bold" style={{ color: 'var(--status-alert)' }}>{health.red}</div>
+                <div className="text-text-muted text-xs mt-1">At risk</div>
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="stagger-3 space-y-3 mb-6">
           <Link href="/plan" className="block">
